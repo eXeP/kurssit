@@ -45,7 +45,7 @@ ofstream out;
 int paikka[100020];
 int paikkacopy[100020];
 unordered_map<pair<int,int>, int> paalle;
-
+int tulos = 0;
 int opn[100020] = {0};
 int paras;
 void save(){
@@ -115,17 +115,21 @@ int laskepaalle(int num, int uus){
     }
     return ret;
 }
+
 int main()
 {
+
     srand (time(NULL));
     cin.sync_with_stdio(0);
     cin.tie(0);
     std::ifstream in("kurssit.txt");
     std::streambuf *cinbuf = std::cin.rdbuf(); //save old buf
     std::cin.rdbuf(in.rdbuf()); //redirect std::cin to in.txt!
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> lukdist(0,24);
 
     cin >> opiskelijat >> kurssit >> maxkurssit;
-
+    std::uniform_int_distribution<int> kursdist(1,kurssit);
     for(int i = 1; i <= opiskelijat; i++){
         int nu, maara; cin >> nu >> maara;
         for(int j = 0; j < maara; j++){
@@ -150,73 +154,57 @@ int main()
    //     paikka[i] = nluk;
    // }
     std::ifstream in2("out.txt");
-            cinbuf = std::cin.rdbuf(); //save old buf
-            std::cin.rdbuf(in2.rdbuf()); //redirect std::cin to in.txt!
-            string lol;
-            getline(cin, lol);
-            while(!cin.eof())
-            {
-                getline(cin, lol);
-                istringstream lols(lol);
-                int kunm;
-                lols>>kunm;
-                kunm--;
-                while(!lols.eof())
-                {
+    cinbuf = std::cin.rdbuf(); //save old buf
+    std::cin.rdbuf(in2.rdbuf()); //redirect std::cin to in.txt!
+    string lol;
+    getline(cin, lol);
+    if(lol.size() == 0){
+        for(int i = 1; i <= kurssit; i++){
+            int nluk = lukdist(generator);
+            lukkari[nluk].insert(i);
+            paikka[i] = nluk;
+        }
+    }
+    else{
+    while(!cin.eof())
+    {
+        getline(cin, lol);
+        istringstream lols(lol);
+        int kunm;
+        lols>>kunm;
+        kunm--;
+        while(!lols.eof())
+        {
 
-                    int kurr;
-                    lols>>kurr;
-                    //cout << kunm << " : " << kurr << endl;
-                    lukkari[paikka[kurr]].erase(kurr);
-                    paikka[kurr] = kunm;
-                    lukkari[kunm].insert(kurr);
-                }
-            }
+            int kurr;
+            lols>>kurr;
+            //cout << kunm << " : " << kurr << endl;
+            lukkari[paikka[kurr]].erase(kurr);
+            paikka[kurr] = kunm;
+            lukkari[kunm].insert(kurr);
+        }
+    }
+    }
+    for(int i = 0; i < 25; i++){
+        lukkaricopy[i].clear();
+        for(int f: lukkari[i])
+            lukkaricopy[i].insert(f);
+
+    }
+    for(int i = 1; i <= kurssit; i++)
+        paikkacopy[i] = paikka[i];
     paras = laske();
+    tulos = paras;
     save();
-    cout << paras << endl;
     int e = paras;
     int cc = 0;
-    int cv = 0;
+    int stuck = 0;
+    cout << paras << endl;
     while(true){
-        //cout << e << endl;
-        int nidx = rand()%kurssit+1;
-        int nluk = rand()%25;
+        int nidx = kursdist(generator);
+        int nluk = lukdist(generator);
         int enev = e;
         int vanhap = paikka[nidx];
-
-        for(int j = 0; j < 25; j++){
-
-            lukkari[paikka[nidx]].erase(nidx);
-            lukkari[j].insert(nidx);
-            paikka[nidx] = j;
-            for(int i = 0; i < opkurssilla[nidx].size(); i++)
-            {
-                enev-=opn[opkurssilla[nidx][i]];
-                int uusopn = laskeop(opkurssilla[nidx][i]);
-                opn[opkurssilla[nidx][i]] = uusopn;
-                enev+=uusopn;
-            }
-            if(enev > paras)
-            {
-                cout << cc << " ja " << cv << endl;
-                paras = enev;
-                save();
-                cc = 0;
-                cv = 0;
-                goto ohi;
-            }
-            lukkari[paikka[nidx]].erase(nidx);
-            lukkari[vanhap].insert(nidx);
-            paikka[nidx] = vanhap;
-            for(int i = 0; i < opkurssilla[nidx].size(); i++)
-            {
-                int uusopn = laskeop(opkurssilla[nidx][i]);
-                opn[opkurssilla[nidx][i]] = uusopn;
-
-            }
-            enev = e;
-        }
 
         lukkari[paikka[nidx]].erase(nidx);
         lukkari[nluk].insert(nidx);
@@ -230,16 +218,18 @@ int main()
         }
         if(enev > paras)
         {
-            cout << cc << " ja " << cv << endl;
+            //cout << cc << " ja " << stuck << endl;
+
             paras = enev;
             save();
             cc = 0;
-            cv = 0;
+            stuck = 1;
+
         }
 
-        cc++;
-        if(cc > 50){
-            //cout << "Uudestaan!" << endl;
+
+        if(cc > 10000){
+            //cout << "lopetettu: " << e << endl;
 
             for(int i = 0; i < 25; i++)
             {
@@ -255,16 +245,20 @@ int main()
             //save();
             e = paras;
             cc = 0;
-            cv = 0;
+            stuck++;
+
+
         }
         ohi:
         double x = ((double) rand() / (RAND_MAX));
-        //cout << e<< endl;
-        if(exp(enev-e) > x){
-            cv++;
+        //cout << exp((paras-enev))<< endl;
+        if(exp(1.0-exp((paras-enev))) > x){
+            cc++;
             e = enev;
+
             continue;
         }
+
         lukkari[paikka[nidx]].erase(nidx);
         lukkari[vanhap].insert(nidx);
         paikka[nidx] = vanhap;
@@ -273,8 +267,6 @@ int main()
             opn[opkurssilla[nidx][i]] = uusopn;
 
         }
-
-
     }
 
 
